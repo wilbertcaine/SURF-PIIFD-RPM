@@ -15,7 +15,7 @@ p          = 8;
 [Q,S]=eigs(@grbf,M,numeig,'lm',OPTS);
     function y=grbf(x,beta)
         [xc , A_k] = fgt_model(Y' , x', hsigma, e,K,p);
-        y = fgt_predict(Y' , xc , A_k , hsigma,e);
+        y = fgt_predict(Y' , xc , A_k , hsigma,e)'; % should be transposed
     end
 
 end

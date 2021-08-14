@@ -1,4 +1,4 @@
-function SURF_PIIFD_RPM(f1,f2)
+function [I, II] = SURF_PIIFD_RPM(f1,f2)
 % ========================================================================
 % Robust Point Matching For Multimodal Retinal Image Registration
 % Copyright(c) 2015 Gang Wang
@@ -30,13 +30,18 @@ function SURF_PIIFD_RPM(f1,f2)
 % Output: fusion image
 % ========================================================================
 
+% clc;    % Clear the command window.
+close all;  % Close all figures (except those of imtool.)
+% clear;  % Erase all existing variables. Or clearvars if you want.
+
 addpath('./FGT_mex');
 addpath('./Utilities');
 addpath('./OpenSURF_version1c');
+addpath('./Dataset');
 
 if nargin==0
-f1 = 'f1.jpg';
-f2 = 'f2.jpg';
+% f1 = '1.jpg';
+% f2 = '1-1.jpg';
 end
 
 tic;
@@ -46,8 +51,8 @@ if exist(f1) && exist(f2)
     im1=imread(f1);
     im2=imread(f2);
     
-    im1=imresize(im1,0.3);
-    im2=imresize(im2,0.4);
+%     im1=imresize(im1,0.3);
+%     im2=imresize(im2,0.4);
     
     
     % SURF
@@ -67,6 +72,7 @@ if exist(f1) && exist(f2)
     p1=round(p1);
     p2=round(p2);
     %proprocessing
+    I22 = im2double(im2);
     if size(im1,3)>1
         im1=im1(:,:,2);
     end
@@ -91,15 +97,15 @@ if exist(f1) && exist(f2)
     rws1=p1(:,2);
     rws2=p2(:,2);
     % show corner points
-    figure;
-    imshow(im1); hold on, plot(p1(:,1),p1(:,2),'r*');
-    figure;
-    imshow(im2); hold on, plot(p2(:,1),p2(:,2),'ro');
+%     figure;
+%     imshow(im1); hold on, plot(p1(:,1),p1(:,2),'r*');
+%     figure;
+%     imshow(im2); hold on, plot(p2(:,1),p2(:,2),'ro');
     
     match=rr_desmatch(I1,I2,cols1,cols2,rws1,rws2);   
     loc1 = match(:,1:4);
     loc2 = match(:,5:8);
-    showmatch(im1,im2,loc1,loc2,0);
+%     showmatch(im1,im2,loc1,loc2,0);
     
     %----- Roubst Point Matching with outliers ------%
     x1=match(:,1:2);
@@ -108,7 +114,7 @@ if exist(f1) && exist(f2)
     loc1=match(indx,1:4);
     loc2=match(indx,5:8);
     loc1(:,1:2) = cpcorr(loc1(:,1:2),loc2(:,1:2),im1,im2);
-    showmatch(im1,im2,loc1,loc2,0);
+%     showmatch(im1,im2,loc1,loc2,0);
     
     %--------Estimate Transformation ----------%
     pointNum=size(loc1,1);
@@ -117,18 +123,38 @@ if exist(f1) && exist(f2)
         t_fundus = cp2tform(loc1(:,1:2),loc2(:,1:2),'affine');
         I1_c = imtransform(im1,t_fundus,'XData',[1 size(im2,2)], 'YData',[1 size(im2,1)]);
         [I1_c,I2_c] = rr_imagesize(I1_c,im2);
-        a1=figure;imshow(I1_c+I2_c,[]); title(['fusion image (affine)']);% intensity
+        mask = overlap_mask(I1_c, I2_c);
+        I1_c_masked = mask .* I1_c;
+        I2_c_masked = mask .* I2_c;
         disp('Affine transformation is done.');
+        for i = 1:3
+            [I1_c,I22(:,:,i)] = rr_imagesize(I1_c,I22(:,:,i));
+            [I1_c,I22(:,:,i)] = rr_imagesize(I1_c,I22(:,:,i));
+            I22(:,:,i) = mask .* I22(:,:,i);
+        end
+        I = I1_c_masked;
+        II = I22;
         if pointNum >=6
             % 2nd Polynomial
             t_fundus = cp2tform(loc1(:,1:2),loc2(:,1:2),'polynomial',2);
             I1_c = imtransform(im1,t_fundus,'XData',[1 size(im2,2)], 'YData',[1 size(im2,1)]);
             [I1_c,I2_c] = rr_imagesize(I1_c,im2);
-            po1=figure;imshow(I1_c+I2_c,[]);title(['fusion image (Polynomial)']);
+            mask = overlap_mask(I1_c, I2_c);
+            I1_c_masked = mask .* I1_c;
+            I2_c_masked = mask .* I2_c;
             disp('2nd Polynomial transformation is done.');
+            for i = 1:3
+                [I1_c,I22(:,:,i)] = rr_imagesize(I1_c,I22(:,:,i));
+                [I1_c,I22(:,:,i)] = rr_imagesize(I1_c,I22(:,:,i));
+                I22(:,:,i) = mask .* I22(:,:,i);
+            end
+            I = I1_c_masked;
+            II = I22;
         end
     else
         fprintf('need at least 3 points !')
+        I = imread(f1);
+        II = imread(f2);
     end
 else
     fprintf('The files can not be found !')
